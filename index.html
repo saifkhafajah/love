@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Safaa's Love Quest ❤️</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* --- CORE STYLES --- */
+        :root {
+            --primary-pink: #ff4d6d;
+            --secondary-pink: #ff758f;
+            --dark-red: #c9184a;
+            --bg-gradient: linear-gradient(135deg, #fff0f3 0%, #ffe3e9 100%);
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: var(--bg-gradient);
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Game handles scrolling */
+            /* Removed global touch-action: none to allow scrolling in specific areas */
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- TYPOGRAPHY --- */
+        .font-handwriting { font-family: 'Dancing Script', cursive; }
+        .font-retro { font-family: 'Press Start 2P', cursive; }
+
+        /* --- LAYOUT UTILITIES --- */
+        .game-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100dvh; /* Mobile viewport fix for iPhone address bars */
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            z-index: 0;
+        }
+
+        .interactive { pointer-events: auto; }
+        .hidden { opacity: 0; pointer-events: none; z-index: -1 !important; display: none; }
+        .visible { opacity: 1; z-index: 10; display: flex; }
+
+        /* --- BACKGROUND CANVAS --- */
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* --- UI COMPONENTS --- */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(255, 77, 109, 0.2);
+            border-radius: 24px;
+            padding: 1.5rem; /* Reduced padding for mobile */
+            max-width: 90%;
+            width: 500px;
+            text-align: center;
+            transform: translateY(0);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .input-field {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #ffb3c1;
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            width: 100%; /* Full width on mobile */
+            max-width: 300px;
+            margin-bottom: 1rem;
+            text-align: center;
+            color: #c9184a;
+            outline: none;
+            transition: all 0.3s;
+        }
+        
+        .input-field:focus {
+            border-color: #ff4d6d;
+            box-shadow: 0 0 0 4px rgba(255, 77, 109, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff4d6d, #ff758f);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.8rem;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 77, 109, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: 0.5s;
+        }
+
+        .btn-primary:hover, .btn-primary:active {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(255, 77, 109, 0.6);
+        }
+        
+        .btn-primary:hover::after { left: 100%; }
+
+        /* --- ENVELOPE ANIMATION --- */
+        .envelope-wrapper {
+            perspective: 1000px;
+            cursor: pointer;
+            transform: scale(0.8); /* Scale down slightly for smaller screens */
+        }
+        @media (min-width: 600px) {
+            .envelope-wrapper { transform: scale(1); }
+        }
+
+        .envelope {
+            width: 300px;
+            height: 200px;
+            background: #ff4d6d;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            transition: transform 0.6s;
+        }
+        .envelope:hover { transform: scale(1.05); }
+        .flap {
+            position: absolute;
+            top: 0;
+            width: 0;
+            height: 0;
+            border-left: 150px solid transparent;
+            border-right: 150px solid transparent;
+            border-top: 100px solid #ff8fa3;
+            transform-origin: top;
+            transition: 0.6s;
+            z-index: 5;
+        }
+        .envelope.open .flap { transform: rotateX(180deg); z-index: 1; }
+        .letter {
+            position: absolute;
+            bottom: 0;
+            width: 260px;
+            height: 180px;
+            background: white;
+            border-radius: 8px;
+            transition: 0.6s;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            text-align: center;
+        }
+        .envelope.open .letter { transform: translateY(-120px); } 
+        
+        .pocket {
+            position: absolute;
+            bottom: 0;
+            width: 0;
+            height: 0;
+            border-left: 150px solid transparent;
+            border-right: 150px solid transparent;
+            border-bottom: 110px solid #ff5c7c;
+            z-index: 4;
+            border-radius: 0 0 10px 10px;
+        }
+
+        /* --- GAME 1: HEART CATCHER --- */
+        #game-canvas {
+            border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+            background: rgba(255,255,255,0.5);
+            touch-action: none; /* Crucial for preventing scroll while playing */
+        }
+
+        /* --- GAME 2: MEMORY MATCH --- */
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 columns on mobile for better size */
+            gap: 8px;
+            perspective: 1000px;
+            width: 100%;
+        }
+        @media (min-width: 600px) {
+            .memory-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+            }
+        }
+
+        .memory-card {
+            width: 100%;
+            aspect-ratio: 1; /* Keep square */
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+            cursor: pointer;
+        }
+        .memory-card.flipped { transform: rotateY(180deg); }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            
+            /* Responsive Font Size */
+            font-size: 0.65rem; 
+            font-weight: 800;
+            padding: 2px;
+            text-align: center;
+            line-height: 1.1;
+            color: white;
+            word-break: break-word;
+        }
+        @media (min-width: 600px) {
+            .card-face { font-size: 0.75rem; padding: 4px; }
+        }
+
+        .card-front {
+            background: #ff4d6d;
+        }
+        .card-back {
+            background: white;
+            transform: rotateY(180deg);
+            border: 2px solid #ff4d6d;
+            color: #ff4d6d;
+        }
+        .matched { opacity: 0; pointer-events: none; transition: opacity 0.5s; }
+
+        /* --- FINAL BOSS --- */
+        .boss-container {
+            position: relative;
+            width: 100%;
+            height: 300px; /* Taller area for mobile chase */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 120px;
+            background: rgba(255,255,255,0.5);
+            padding: 8px;
+            border-radius: 15px;
+            z-index: 100;
+            display: none;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #ff4d6d;
+            width: 0%;
+            transition: width 0.5s;
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* NEW: Funny Taunt Animation */
+        @keyframes taunt {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.1) rotate(-5deg); }
+            75% { transform: scale(1.1) rotate(5deg); }
+        }
+        
+        .btn-taunt {
+            animation: taunt 2s infinite ease-in-out;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Canvas Background for Global Particles -->
+    <canvas id="bgCanvas"></canvas>
+
+    <!-- Global Progress UI -->
+    <div id="gameProgress" class="progress-container glass-panel">
+        <p class="text-xs font-bold text-pink-600 mb-1">LOVE METER</p>
+        <div class="progress-bar">
+            <div id="progressFill" class="progress-fill"></div>
+        </div>
+    </div>
+
+    <!-- STAGE -2: LOADING SCREEN -->
+    <div id="stage-loading" class="game-layer visible" style="z-index: 100; background: linear-gradient(135deg, #fff0f3 0%, #ffe3e9 100%);">
+        <div class="text-center p-8 w-full">
+            <div class="text-6xl mb-6 animate-bounce">🌹</div>
+            <h1 class="font-handwriting text-5xl md:text-6xl text-pink-600 mb-6 drop-shadow-sm leading-tight">Happy Valentine's Day Safaa</h1>
+            <p class="text-lg md:text-2xl text-gray-700 max-w-lg mx-auto leading-relaxed font-light px-4">
+                I made this special place just for you because you mean the world to me.
+            </p>
+            <div class="mt-12 flex justify-center">
+                <div class="w-12 h-12 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin"></div>
+            </div>
+            <p class="text-pink-400 text-sm mt-4 animate-pulse">Loading Love...</p>
+        </div>
+    </div>
+
+    <!-- STAGE -1: SECURITY CHECK (Safaa Only) -->
+    <div id="stage-login" class="game-layer interactive hidden">
+        <div class="glass-panel">
+            <div class="mb-4 text-4xl">🔒</div>
+            <h2 class="font-retro text-lg text-pink-600 mb-2">SECURITY CHECK</h2>
+            <p class="text-gray-600 mb-6 text-sm">This mission is classified. Please verify your identity.</p>
+            
+            <input type="text" id="nameInput" class="input-field" placeholder="Enter your first name..." autocomplete="off">
+            <p id="loginError" class="text-red-500 text-xs mb-4 h-4"></p>
+            
+            <button class="btn-primary" onclick="Game.checkLogin()">VERIFY IDENTITY</button>
+        </div>
+    </div>
+
+    <!-- STAGE 0: LOADING / INTRO -->
+    <div id="stage-intro" class="game-layer interactive hidden">
+        <div class="envelope-wrapper" onclick="Game.nextStage()">
+            <div id="envelope" class="envelope">
+                <div class="flap"></div>
+                <div class="pocket"></div>
+                <div class="letter">
+                    <h1 class="font-handwriting text-3xl text-pink-600 mb-2">For Safaa</h1>
+                    <p class="text-gray-500 text-sm">A special message...</p>
+                    <p class="text-xs text-pink-400 mt-4">Tap to Read 💌</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STAGE 1: BRIEFING -->
+    <div id="stage-briefing" class="game-layer interactive hidden">
+        <div class="glass-panel">
+            <h2 class="font-retro text-lg text-pink-600 mb-4">MISSION START</h2>
+            <p class="text-gray-700 mb-6">
+                Identity Confirmed: <strong>My Beautiful Safaa</strong>. 🌸
+                <br><br>
+                To unlock the surprise, you need to gather all the love I'm sending your way!
+                <br><br>
+                <strong>Mission 1:</strong> Catch 10 of my heartbeats! 💓
+            </p>
+            <button class="btn-primary" onclick="Game.startLevel1()">START LEVEL 1</button>
+        </div>
+    </div>
+
+    <!-- STAGE 2: HEART CATCHER GAME -->
+    <div id="stage-level1" class="game-layer interactive hidden">
+        <div class="glass-panel" style="width: auto; max-width: 95%;">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="font-retro text-pink-500 text-xs">CATCH <span id="score">0</span>/10</h3>
+                <p class="text-xs text-gray-400">Drag to catch</p>
+            </div>
+            <!-- Dynamic canvas sizing controlled by JS -->
+            <canvas id="catcherCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- STAGE 3: LEVEL 2 BRIEFING -->
+    <div id="stage-briefing-2" class="game-layer interactive hidden">
+        <div class="glass-panel">
+            <h2 class="font-retro text-lg text-pink-600 mb-4">LEVEL COMPLETE!</h2>
+            <p class="text-gray-700 mb-6">
+                Yay! You caught my heart! 🥰
+                <br>
+                Now, let's celebrate all the little things that make me fall for you every single day.
+                <br><br>
+                <strong>Mission 2:</strong> Find the matching reasons why I adore you! 💌
+            </p>
+            <button class="btn-primary" onclick="Game.startLevel2()">START LEVEL 2</button>
+        </div>
+    </div>
+
+    <!-- STAGE 4: MEMORY GAME -->
+    <div id="stage-level2" class="game-layer interactive hidden">
+        <div class="glass-panel">
+            <h3 class="font-retro text-pink-500 text-sm mb-4">REASONS WHY I LOVE YOU</h3>
+            <div class="memory-grid" id="memoryGrid">
+                <!-- Generated by JS -->
+            </div>
+            <p id="memoryMsg" class="text-xs text-gray-400 mt-4">Match the pairs!</p>
+        </div>
+    </div>
+
+    <!-- STAGE 5: FINAL BOSS BRIEFING -->
+    <div id="stage-briefing-3" class="game-layer interactive hidden">
+        <div class="glass-panel">
+            <div class="mb-4">
+                <img src="https://media1.tenor.com/m/m12fG5X02WwAAAAC/milk-and-mocha-hug.gif" alt="Cute" class="w-32 h-32 mx-auto rounded-full shadow-lg">
+            </div>
+            <h2 class="font-retro text-lg text-pink-600 mb-4">FINAL LEVEL</h2>
+            <p class="text-gray-700 mb-6">
+                You are absolutely perfect! 🌟
+                <br>
+                My heart is fully yours. Now, I have one tiny, huge, very important question to ask...
+                <br>
+                (Warning: The 'No' button is feeling shy and might run away! 🤭)
+            </p>
+            <button class="btn-primary" onclick="Game.startBossLevel()">ASK ME</button>
+        </div>
+    </div>
+
+    <!-- STAGE 6: THE PROPOSAL (BOSS FIGHT) -->
+    <div id="stage-boss" class="game-layer interactive hidden">
+        <div class="glass-panel relative w-full max-w-lg">
+            <h2 class="font-handwriting text-5xl text-pink-600 mb-2">Safaa,</h2>
+            <p class="text-xl text-gray-700 mb-8 font-bold">Will you be my Valentine? 🌹</p>
+            
+            <div class="boss-container">
+                <button id="btnYes" class="btn-primary" style="z-index: 50;">YES! 🥰</button>
+                <button id="btnNo" class="bg-gray-300 text-gray-600 font-bold py-3 px-8 rounded-full shadow-md ml-4 transition-all duration-200 ease-out btn-taunt">No</button>
+            </div>
+            <p id="bossTaunt" class="text-xs text-pink-400 mt-4 h-4"></p>
+        </div>
+    </div>
+
+    <!-- STAGE 7: VICTORY -->
+    <div id="stage-victory" class="game-layer interactive hidden">
+        <div class="text-center z-10 p-4">
+            <img src="https://media1.tenor.com/m/Ot-6fJ1F4Q4AAAAC/love-bear.gif" alt="Victory" class="w-48 mx-auto rounded-xl shadow-2xl border-4 border-white mb-6">
+            <h1 class="font-handwriting text-5xl md:text-6xl text-pink-600 mb-4 drop-shadow-lg">She Said Yes!</h1>
+            <p class="text-xl md:text-2xl text-gray-700 bg-white/50 px-6 py-2 rounded-full inline-block">Happy Valentine's Day Safaa! ❤️</p>
+            <br>
+            <button class="btn-primary mt-8 animate-bounce" onclick="Game.showFinalLetter()">READ MY LETTER 💌</button>
+        </div>
+    </div>
+
+    <!-- STAGE 8: FINAL LETTER -->
+    <div id="stage-final-letter" class="game-layer interactive hidden">
+        <div class="glass-panel relative" style="background: #fffaf0; border: 1px solid #eec; box-shadow: 0 20px 50px rgba(0,0,0,0.15); max-width: 600px; transform: rotate(-1deg); max-height: 80vh; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y;">
+            <!-- Decorative Tape -->
+            <div style="position: absolute; top: -15px; left: 50%; transform: translateX(-50%) rotate(2deg); width: 140px; height: 35px; background: rgba(255, 77, 109, 0.4); opacity: 0.8;"></div>
+            
+            <div class="p-4 md:p-8 text-left">
+                <h2 class="font-handwriting text-3xl md:text-4xl text-pink-600 mb-6">My Dearest Safsaf,</h2>
+                <p class="font-handwriting text-xl md:text-2xl text-gray-700 leading-relaxed mb-6">
+                    Thank you for making my world so much brighter. ✨
+                    <br><br>
+                    Every time I see your smile, I'm reminded of how lucky I am. You are my happiness, my safe place, and my favorite adventure.
+                    <br><br>
+                    I promise to always cherish you, make you laugh, and be there for you through everything.
+                    <br><br>
+                    You mean the world to me.
+                    <br>
+                    I love you so much, Safsaf. 🌹
+                </p>
+                <p class="text-right font-handwriting text-2xl md:text-3xl text-pink-500 mt-8">- Your lovely Saif</p>
+            </div>
+            
+            <div class="pb-6 mt-4 border-t border-pink-100 pt-4">
+                <button class="text-gray-400 text-sm hover:text-pink-500 transition-colors" onclick="location.reload()">Replay Game ↺</button>
+                <p class="text-xs text-pink-300 mt-2 font-light">Made by Saif</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        /**
+         * CUSTOM CONFIGURATION
+         */
+        const CONFIG = {
+            allowedNames: ["safaa", "safa", "my love", "princess"],
+            valentineName: "Safaa",
+            particles: ['❤️', '🌹', '✨', 'Safaa', '💖']
+        };
+
+        const Utils = {
+            random: (min, max) => Math.random() * (max - min) + min,
+            randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1) + min)
+        };
+
+        class ParticleSystem {
+            constructor() {
+                this.canvas = document.getElementById('bgCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.particles = [];
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                this.animate();
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            createParticle() {
+                return {
+                    x: Math.random() * this.canvas.width,
+                    y: this.canvas.height + 20,
+                    size: Math.random() * 20 + 10,
+                    speed: Math.random() * 1 + 0.5,
+                    oscillation: Math.random() * 2,
+                    text: CONFIG.particles[Math.floor(Math.random() * CONFIG.particles.length)],
+                    opacity: Math.random() * 0.5 + 0.2
+                };
+            }
+
+            animate() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                if (this.particles.length < 50) this.particles.push(this.createParticle());
+                for (let i = 0; i < this.particles.length; i++) {
+                    let p = this.particles[i];
+                    p.y -= p.speed;
+                    p.x += Math.sin(p.y * 0.01) * p.oscillation;
+                    this.ctx.font = `${p.size}px Arial`;
+                    this.ctx.fillStyle = `rgba(255, 77, 109, ${p.opacity})`;
+                    this.ctx.fillText(p.text, p.x, p.y);
+                    if (p.y < -50) {
+                        this.particles.splice(i, 1);
+                        i--;
+                    }
+                }
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        class HeartCatcher {
+            constructor() {
+                this.canvas = document.getElementById('catcherCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.basket = { x: 0, width: 60, height: 40 }; // x set in resize
+                this.hearts = [];
+                this.score = 0;
+                this.targetScore = 10;
+                this.active = false;
+                this.animationId = null;
+
+                // Responsive Canvas sizing
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+
+                this.canvas.addEventListener('mousemove', (e) => this.updateBasket(e));
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    this.updateBasket(e.touches[0]);
+                }, { passive: false });
+            }
+            
+            resize() {
+                // Determine width: min of 350 or screen width - padding
+                const maxWidth = 350;
+                const width = Math.min(window.innerWidth - 40, maxWidth);
+                this.canvas.width = width;
+                this.canvas.height = 400; // Fixed height is fine
+                // Reset basket position if out of bounds
+                this.basket.x = (this.canvas.width / 2) - (this.basket.width / 2);
+            }
+
+            start() {
+                this.score = 0;
+                this.hearts = [];
+                this.active = true;
+                this.resize(); // Ensure size is correct on start
+                this.loop();
+                document.getElementById('score').innerText = '0';
+            }
+
+            stop() {
+                this.active = false;
+                cancelAnimationFrame(this.animationId);
+            }
+
+            updateBasket(input) {
+                const rect = this.canvas.getBoundingClientRect();
+                // Simple X mapping
+                let pos = (input.clientX - rect.left);
+                this.basket.x = Math.max(0, Math.min(this.canvas.width - this.basket.width, pos - this.basket.width/2));
+            }
+
+            spawnHeart() {
+                if (Math.random() < 0.03) {
+                    this.hearts.push({
+                        x: Math.random() * (this.canvas.width - 20),
+                        y: -20,
+                        speed: Utils.random(2, 5),
+                        size: 20
+                    });
+                }
+            }
+
+            loop() {
+                if (!this.active) return;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw Basket
+                this.ctx.fillStyle = '#ff4d6d';
+                this.ctx.beginPath();
+                this.ctx.roundRect(this.basket.x, this.canvas.height - 40, this.basket.width, this.basket.height, 10);
+                this.ctx.fill();
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '20px Arial';
+                this.ctx.fillText('🧺', this.basket.x + 15, this.canvas.height - 12);
+
+                this.spawnHeart();
+
+                for (let i = 0; i < this.hearts.length; i++) {
+                    let h = this.hearts[i];
+                    h.y += h.speed;
+                    this.ctx.font = '24px Arial';
+                    this.ctx.fillText('❤️', h.x, h.y);
+
+                    if (h.y > this.canvas.height - 50 && h.y < this.canvas.height && 
+                        h.x > this.basket.x - 10 && h.x < this.basket.x + this.basket.width) {
+                        this.hearts.splice(i, 1);
+                        this.score++;
+                        document.getElementById('score').innerText = this.score;
+                        Game.updateProgress(10 + (this.score * 3));
+                        
+                        confetti({
+                            particleCount: 5,
+                            spread: 30,
+                            origin: { x: h.x / window.innerWidth + 0.5, y: 0.7 }, // Approx
+                            colors: ['#ff4d6d']
+                        });
+
+                        if (this.score >= this.targetScore) {
+                            this.stop();
+                            setTimeout(() => Game.level1Complete(), 500);
+                        }
+                        i--;
+                        continue;
+                    }
+                    if (h.y > this.canvas.height) {
+                        this.hearts.splice(i, 1);
+                        i--;
+                    }
+                }
+                this.animationId = requestAnimationFrame(() => this.loop());
+            }
+        }
+
+        class MemoryGame {
+            constructor() {
+                this.grid = document.getElementById('memoryGrid');
+                this.items = ['Your Smile', 'Your Laugh', 'Your Personality', 'Your Heart', 'Your Beauty', 'Everything'];
+                this.cards = [];
+                this.flipped = [];
+                this.matches = 0;
+                this.locked = false;
+            }
+
+            init() {
+                this.grid.innerHTML = '';
+                this.cards = [...this.items, ...this.items];
+                this.cards.sort(() => Math.random() - 0.5);
+                this.matches = 0;
+                this.flipped = [];
+                
+                this.cards.forEach((item, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'memory-card';
+                    card.dataset.index = index;
+                    card.dataset.value = item;
+                    card.innerHTML = `<div class="card-face card-front">❓</div><div class="card-face card-back">${item}</div>`;
+                    card.addEventListener('click', () => this.flipCard(card));
+                    this.grid.appendChild(card);
+                });
+            }
+
+            flipCard(card) {
+                if (this.locked) return;
+                if (card.classList.contains('flipped')) return;
+                card.classList.add('flipped');
+                this.flipped.push(card);
+                if (this.flipped.length === 2) this.checkMatch();
+            }
+
+            checkMatch() {
+                this.locked = true;
+                const [c1, c2] = this.flipped;
+                const match = c1.dataset.value === c2.dataset.value;
+                if (match) {
+                    this.matches++;
+                    Game.updateProgress(40 + (this.matches * 10));
+                    setTimeout(() => {
+                        c1.classList.add('matched');
+                        c2.classList.add('matched');
+                        this.resetTurn();
+                        if (this.matches === this.items.length) setTimeout(() => Game.level2Complete(), 800);
+                    }, 500);
+                } else {
+                    setTimeout(() => {
+                        c1.classList.remove('flipped');
+                        c2.classList.remove('flipped');
+                        this.resetTurn();
+                    }, 1000);
+                }
+            }
+
+            resetTurn() {
+                this.flipped = [];
+                this.locked = false;
+            }
+        }
+
+        class BossBattle {
+            constructor() {
+                this.btnNo = document.getElementById('btnNo');
+                this.btnYes = document.getElementById('btnYes');
+                this.taunt = document.getElementById('bossTaunt');
+                this.container = document.querySelector('.boss-container');
+                
+                this.btnYes.addEventListener('click', () => Game.victory());
+                this.btnNo.addEventListener('mouseover', () => this.teleport());
+                this.btnNo.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.teleport();
+                }, { passive: false });
+                this.btnNo.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.teleport();
+                });
+                
+                this.taunts = ["Too slow! 😜", "Try again!", "Nope!", `${CONFIG.valentineName} pls...`, "Missed me!", "Just click YES!", "I'm fast!"];
+                this.btnTexts = ["No", "Nope", "Nah", "Catch Me", "Too Slow", "Try Again", "Can't Touch This"];
+            }
+
+            teleport() {
+                const currentSize = parseFloat(window.getComputedStyle(this.btnYes).fontSize);
+                const newSize = Math.min(currentSize * 1.2, 100);
+                this.btnYes.style.fontSize = `${newSize}px`;
+                this.btnYes.style.padding = `${Math.min(parseFloat(window.getComputedStyle(this.btnYes).padding) * 1.1, 50)}px`;
+
+                // Calculate safe bounds (margin 40px for notch/safety)
+                const margin = 40;
+                const btnWidth = this.btnNo.offsetWidth || 100;
+                const btnHeight = this.btnNo.offsetHeight || 50;
+                const maxX = window.innerWidth - btnWidth - margin;
+                const maxY = window.innerHeight - btnHeight - margin;
+                
+                const newX = Math.max(margin, Math.random() * maxX);
+                const newY = Math.max(margin, Math.random() * maxY);
+
+                this.btnNo.style.position = 'fixed';
+                this.btnNo.style.left = `${newX}px`;
+                this.btnNo.style.top = `${newY}px`;
+                
+                this.btnNo.classList.remove('btn-taunt');
+                void this.btnNo.offsetWidth;
+                
+                const randomRotate = Utils.random(-45, 45);
+                this.btnNo.style.transform = `rotate(${randomRotate}deg) scale(1.1)`;
+                
+                setTimeout(() => this.btnNo.classList.add('btn-taunt'), 200);
+
+                this.btnNo.innerText = this.btnTexts[Math.floor(Math.random() * this.btnTexts.length)];
+                this.taunt.innerText = this.taunts[Math.floor(Math.random() * this.taunts.length)];
+                this.taunt.style.opacity = 1;
+                
+                if (this.tauntTimeout) clearTimeout(this.tauntTimeout);
+                this.tauntTimeout = setTimeout(() => this.taunt.style.opacity = 0, 1000);
+            }
+        }
+
+        const Game = {
+            state: 'login',
+            catcher: new HeartCatcher(),
+            memory: new MemoryGame(),
+            boss: new BossBattle(),
+            bg: new ParticleSystem(),
+
+            switchLayer: (fromId, toId) => {
+                const fromEl = document.getElementById(fromId);
+                const toEl = document.getElementById(toId);
+                fromEl.classList.remove('visible');
+                fromEl.classList.add('hidden');
+                setTimeout(() => {
+                    fromEl.style.display = 'none';
+                    toEl.style.display = 'flex';
+                    void toEl.offsetWidth;
+                    toEl.classList.remove('hidden');
+                    toEl.classList.add('visible');
+                }, 500);
+            },
+
+            updateProgress: (percent) => {
+                document.getElementById('progressFill').style.width = `${percent}%`;
+            },
+
+            checkLogin: () => {
+                const input = document.getElementById('nameInput');
+                const error = document.getElementById('loginError');
+                const val = input.value.trim().toLowerCase();
+                if (CONFIG.allowedNames.some(n => val.includes(n))) {
+                    input.style.borderColor = "#4ade80";
+                    error.style.color = "#4ade80";
+                    error.innerText = "ACCESS GRANTED";
+                    setTimeout(() => Game.switchLayer('stage-login', 'stage-intro'), 1000);
+                } else {
+                    input.classList.add('shake');
+                    input.style.borderColor = "#ef4444";
+                    error.style.color = "#ef4444";
+                    error.innerText = "ACCESS DENIED: Who are you? 🤨";
+                    setTimeout(() => input.classList.remove('shake'), 500);
+                }
+            },
+
+            nextStage: () => {
+                const envelope = document.getElementById('envelope');
+                if(!envelope.classList.contains('open')) {
+                    envelope.classList.add('open');
+                    setTimeout(() => {
+                        Game.switchLayer('stage-intro', 'stage-briefing');
+                        document.getElementById('gameProgress').style.display = 'block';
+                        Game.updateProgress(10);
+                    }, 2500);
+                }
+            },
+
+            startLevel1: () => {
+                Game.switchLayer('stage-briefing', 'stage-level1');
+                setTimeout(() => Game.catcher.start(), 600);
+            },
+            level1Complete: () => {
+                Game.switchLayer('stage-level1', 'stage-briefing-2');
+                Game.updateProgress(40);
+                confetti({ origin: { y: 0.6 } });
+            },
+            startLevel2: () => {
+                Game.switchLayer('stage-briefing-2', 'stage-level2');
+                Game.memory.init();
+            },
+            level2Complete: () => {
+                Game.switchLayer('stage-level2', 'stage-briefing-3');
+                Game.updateProgress(90);
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            },
+            startBossLevel: () => {
+                Game.switchLayer('stage-briefing-3', 'stage-boss');
+                Game.updateProgress(95);
+            },
+            victory: () => {
+                Game.switchLayer('stage-boss', 'stage-victory');
+                Game.updateProgress(100);
+                (function frame() {
+                    confetti({ particleCount: 7, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff4d6d', '#ff0000'] });
+                    confetti({ particleCount: 7, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff4d6d', '#ff0000'] });
+                    if (Date.now() < Date.now() + 5000) requestAnimationFrame(frame);
+                }());
+            },
+            showFinalLetter: () => {
+                Game.switchLayer('stage-victory', 'stage-final-letter');
+                confetti({ particleCount: 100, spread: 100, origin: { y: 0 }, gravity: 0.5, scalar: 0.8, ticks: 300 });
+            }
+        };
+
+        window.onload = () => {
+            const layers = ['stage-login', 'stage-intro', 'stage-briefing', 'stage-level1', 'stage-briefing-2', 'stage-level2', 'stage-briefing-3', 'stage-boss', 'stage-victory', 'stage-final-letter'];
+            layers.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            document.getElementById('nameInput').addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    Game.checkLogin();
+                }
+            });
+            setTimeout(() => Game.switchLayer('stage-loading', 'stage-login'), 4000);
+        };
+    </script>
+</body>
+</html>
