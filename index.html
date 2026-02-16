@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Nunito:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- YouTube API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         /* --- CORE STYLES --- */
         :root {
@@ -321,12 +323,37 @@
             30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
             40%, 60% { transform: translate3d(4px, 0, 0); }
         }
+
+        /* Music Button */
+        .music-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            z-index: 200;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .music-btn:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
 
     <!-- Canvas Background for Global Particles -->
     <canvas id="bgCanvas"></canvas>
+
+    <!-- Music Button -->
+    <div id="musicBtn" class="music-btn" onclick="toggleMusic()">🎵</div>
+    <!-- Hidden YouTube Player -->
+    <div id="music-player"></div>
 
     <!-- Global Progress UI -->
     <div id="gameProgress" class="progress-container glass-panel">
@@ -520,6 +547,42 @@
             random: (min, max) => Math.random() * (max - min) + min,
             randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1) + min)
         };
+
+        /* MUSIC CONTROLLER */
+        var player;
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('music-player', {
+                height: '0',
+                width: '0',
+                videoId: 'tyKu0uZS86Q', // The song ID
+                playerVars: {
+                    'autoplay': 0,
+                    'controls': 0,
+                    'loop': 1,
+                    'playlist': 'tyKu0uZS86Q' // Required for looping
+                },
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            // Player is ready, waiting for interaction
+        }
+
+        function toggleMusic() {
+            const btn = document.getElementById('musicBtn');
+             if (player && player.getPlayerState() === YT.PlayerState.PLAYING) {
+                player.pauseVideo();
+                btn.innerText = "🔇";
+                btn.style.opacity = "0.7";
+            } else if (player) {
+                player.playVideo();
+                btn.innerText = "🎵";
+                btn.style.opacity = "1";
+            }
+        }
 
         class ParticleSystem {
             constructor() {
@@ -838,6 +901,12 @@
                     input.style.borderColor = "#4ade80";
                     error.style.color = "#4ade80";
                     error.innerText = "ACCESS GRANTED";
+                    
+                    // START MUSIC ON INTERACTION
+                    if (player) {
+                        player.playVideo();
+                    }
+                    
                     setTimeout(() => Game.switchLayer('stage-login', 'stage-intro'), 1000);
                 } else {
                     input.classList.add('shake');
